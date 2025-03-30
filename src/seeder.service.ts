@@ -27,14 +27,28 @@ export class SeederService implements OnApplicationBootstrap {
     await this.seedDatabase();
   }
 
+  private generateUniqueEmail(firstName: string, lastName: string, existingEmails: Set<string>): string {
+    const firstInitial = firstName.charAt(0).toLowerCase();
+    const lastNameLower = lastName.toLowerCase();
+    let sequence = 1;
+    let email = `${firstInitial}${lastNameLower}${sequence}@school.edu`;
+    
+    while (existingEmails.has(email)) {
+      sequence++;
+      email = `${firstInitial}${lastNameLower}${sequence}@school.edu`;
+    }
+    
+    existingEmails.add(email);
+    return email;
+  }
+
   private async seedDatabase() {
     const entityManager = this.connection.createEntityManager();
+    const existingEmails = new Set<string>();
 
     try {
       await entityManager.transaction(async transactionalEntityManager => {
-        // *IMPORTANT: Clear existing data before seeding (for development) - PostgreSQL Version*
-        // PostgreSQL doesn't use SET FOREIGN_KEY_CHECKS.  Instead, we use CASCADE when deleting.
-        // The order of deletion is important because of dependencies.
+        // Clear existing data
         await transactionalEntityManager.query('TRUNCATE TABLE enrollment RESTART IDENTITY CASCADE;');
         await transactionalEntityManager.query('TRUNCATE TABLE course RESTART IDENTITY CASCADE;');
         await transactionalEntityManager.query('TRUNCATE TABLE student RESTART IDENTITY CASCADE;');
@@ -44,182 +58,76 @@ export class SeederService implements OnApplicationBootstrap {
 
         // Seed Students
         const studentsData = [
-          {
-            firstName: 'John',
-            lastName: 'Smith',
-            email: 'john.smith@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'Emma',
-            lastName: 'Johnson',
-            email: 'emma.johnson@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'Michael',
-            lastName: 'Brown',
-            email: 'michael.brown@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'Sarah',
-            lastName: 'Davis',
-            email: 'sarah.davis@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'David',
-            lastName: 'Wilson',
-            email: 'david.wilson@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'Lisa',
-            lastName: 'Anderson',
-            email: 'lisa.anderson@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'James',
-            lastName: 'Taylor',
-            email: 'james.taylor@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'Emily',
-            lastName: 'Thomas',
-            email: 'emily.thomas@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'Robert',
-            lastName: 'Jackson',
-            email: 'robert.jackson@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          },
-          {
-            firstName: 'Jennifer',
-            lastName: 'White',
-            email: 'jennifer.white@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-          }
+          { firstName: 'John', lastName: 'Smith' },
+          { firstName: 'Emma', lastName: 'Johnson' },
+          { firstName: 'Michael', lastName: 'Brown' },
+          { firstName: 'Sarah', lastName: 'Davis' },
+          { firstName: 'David', lastName: 'Wilson' },
+          { firstName: 'Lisa', lastName: 'Anderson' },
+          { firstName: 'James', lastName: 'Taylor' },
+          { firstName: 'Emily', lastName: 'Thomas' },
+          { firstName: 'Robert', lastName: 'Jackson' },
+          { firstName: 'Jennifer', lastName: 'White' }
         ];
 
         const students: Student[] = [];
         for (const studentData of studentsData) {
-          const savedStudent = await transactionalEntityManager.getRepository(Student).save(studentData);
+          const email = this.generateUniqueEmail(studentData.firstName, studentData.lastName, existingEmails);
+          const student = {
+            ...studentData,
+            email,
+            passwordHash: bcrypt.hashSync('password123456', 10),
+          };
+          const savedStudent = await transactionalEntityManager.getRepository(Student).save(student);
           students.push(savedStudent);
           console.log(`Created student: ${savedStudent.email}`);
         }
 
         // Seed Teachers (including admin)
         const teachersData = [
-          {
-            firstName: 'Admin',
-            lastName: 'User',
-            title: 'Administrator',
-            email: 'admin@example.com',
-            passwordHash: bcrypt.hashSync('adminpassword123', 10),
-            role: UserRole.Admin,
-          },
-          {
-            firstName: 'Robert',
-            lastName: 'Miller',
-            title: 'Professor',
-            email: 'robert.miller@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          },
-          {
-            firstName: 'Mary',
-            lastName: 'Anderson',
-            title: 'Associate Professor',
-            email: 'mary.anderson@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          },
-          {
-            firstName: 'William',
-            lastName: 'Taylor',
-            title: 'Professor',
-            email: 'william.taylor@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          },
-          {
-            firstName: 'Patricia',
-            lastName: 'Thomas',
-            title: 'Assistant Professor',
-            email: 'patricia.thomas@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          },
-          {
-            firstName: 'Joseph',
-            lastName: 'Jackson',
-            title: 'Professor',
-            email: 'joseph.jackson@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          },
-          {
-            firstName: 'Jennifer',
-            lastName: 'White',
-            title: 'Associate Professor',
-            email: 'jennifer.white@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          },
-          {
-            firstName: 'Thomas',
-            lastName: 'Harris',
-            title: 'Professor',
-            email: 'thomas.harris@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          },
-          {
-            firstName: 'Margaret',
-            lastName: 'Clark',
-            title: 'Assistant Professor',
-            email: 'margaret.clark@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          },
-          {
-            firstName: 'Christopher',
-            lastName: 'Lewis',
-            title: 'Professor',
-            email: 'christopher.lewis@example.com',
-            passwordHash: bcrypt.hashSync('password123456', 10),
-            role: UserRole.Teacher,
-          }
+          { firstName: 'Admin', lastName: 'User', title: 'Administrator', role: UserRole.Admin },
+          { firstName: 'Robert', lastName: 'Miller', title: 'Professor', role: UserRole.Teacher },
+          { firstName: 'Mary', lastName: 'Anderson', title: 'Associate Professor', role: UserRole.Teacher },
+          { firstName: 'William', lastName: 'Taylor', title: 'Professor', role: UserRole.Teacher },
+          { firstName: 'Patricia', lastName: 'Thomas', title: 'Assistant Professor', role: UserRole.Teacher },
+          { firstName: 'Joseph', lastName: 'Jackson', title: 'Professor', role: UserRole.Teacher },
+          { firstName: 'Jennifer', lastName: 'White', title: 'Associate Professor', role: UserRole.Teacher },
+          { firstName: 'Thomas', lastName: 'Harris', title: 'Professor', role: UserRole.Teacher },
+          { firstName: 'Margaret', lastName: 'Clark', title: 'Assistant Professor', role: UserRole.Teacher },
+          { firstName: 'Christopher', lastName: 'Lewis', title: 'Professor', role: UserRole.Teacher }
         ];
 
         const teachers: Teacher[] = [];
         for (const teacherData of teachersData) {
-          const savedTeacher = await transactionalEntityManager.getRepository(Teacher).save(teacherData);
+          const email = this.generateUniqueEmail(teacherData.firstName, teacherData.lastName, existingEmails);
+          const teacher = {
+            ...teacherData,
+            email,
+            passwordHash: bcrypt.hashSync('password123456', 10),
+          };
+          const savedTeacher = await transactionalEntityManager.getRepository(Teacher).save(teacher);
           teachers.push(savedTeacher);
           console.log(`Created teacher: ${savedTeacher.email} with role: ${savedTeacher.role}`);
         }
 
-        // Seed Courses
-        const coursesData = [
-          { name: 'Mathematics 101', level: 'Beginner', credits: 3 },
-          { name: 'Physics 101', level: 'Beginner', credits: 4 },
-          { name: 'Chemistry 101', level: 'Beginner', credits: 4 },
-          { name: 'Biology 101', level: 'Beginner', credits: 3 },
-          { name: 'Computer Science 101', level: 'Beginner', credits: 3 },
-          { name: 'Advanced Mathematics', level: 'Advanced', credits: 4 },
-          { name: 'Quantum Physics', level: 'Advanced', credits: 4 },
-          { name: 'Organic Chemistry', level: 'Intermediate', credits: 4 },
-          { name: 'Genetics', level: 'Intermediate', credits: 3 },
-          { name: 'Data Structures', level: 'Intermediate', credits: 3 }
+        // Seed Courses (40 courses)
+        const courseLevels = ['100', '200', '300', '400'];
+        const courseSubjects = [
+          'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science',
+          'English', 'History', 'Economics', 'Psychology', 'Sociology',
+          'Art', 'Music', 'Philosophy', 'Political Science', 'Geography',
+          'Environmental Science', 'Statistics', 'Engineering', 'Literature', 'Anthropology'
         ];
 
         const courses: Course[] = [];
-        for (const courseData of coursesData) {
+        for (let i = 0; i < 40; i++) {
+          const subject = courseSubjects[i % courseSubjects.length];
+          const level = courseLevels[Math.floor(i / 10)];
+          const courseData = {
+            name: `${subject} ${level}`,
+            level,
+            credits: Math.floor(Math.random() * 2) + 3, // 3-4 credits
+          };
           const savedCourse = await transactionalEntityManager.getRepository(Course).save(courseData);
           courses.push(savedCourse);
           console.log(`Created course: ${savedCourse.name}`);
@@ -234,10 +142,9 @@ export class SeederService implements OnApplicationBootstrap {
           console.log(`Assigned teacher ${teacher.email} to course ${course.name}`);
         }
 
-        // Create some random enrollments
+        // Create enrollments (2-4 courses per student)
         for (const student of students) {
-          // Each student is enrolled in 2-4 random courses
-          const numEnrollments = Math.floor(Math.random() * 3) + 2;
+          const numEnrollments = Math.floor(Math.random() * 3) + 2; // 2-4 courses
           const shuffledCourses = [...courses].sort(() => Math.random() - 0.5);
           
           for (let i = 0; i < numEnrollments; i++) {
@@ -252,24 +159,11 @@ export class SeederService implements OnApplicationBootstrap {
           }
         }
 
-        // Verify admin user was created correctly
-        const adminUser = await transactionalEntityManager.getRepository(Teacher).findOne({
-          where: { email: 'admin@example.com' },
-        });
-        if (adminUser) {
-          console.log(`Admin user verified in database: ${adminUser.email} with role: ${adminUser.role}`);
-        } else {
-          console.error('Admin user was not created successfully!');
-        }
+        console.log('Database seeding completed successfully.');
       });
     } catch (error) {
-      console.error("Seeding failed within transaction:", error);
+      console.error('Error seeding database:', error);
       throw error;
     }
-
-    console.log('Database seeding complete.');
   }
-}/*
-  "email": "admin@example.com",
-  "password": "adminpassword"
-}*/
+}
