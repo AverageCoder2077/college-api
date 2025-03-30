@@ -1,64 +1,99 @@
-import {
-    Body,
-    Controller,
-    HttpCode,
-    HttpStatus,
-    Post,
-    Version,
-    Get,
-    Request,
-    UseGuards,
-  } from '@nestjs/common';
-  import { AuthService } from './auth.service';
-  import { Public } from './decorators/public.decorator';
-  import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-  import { AuthGuard } from './auth.guard';
-  
-  
-  @Controller({
-    path: 'auth',
-    version: '1',
+import { Controller, Post, Body, ValidationPipe, UnauthorizedException } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { StudentLoginDto, TeacherLoginDto } from './dto/auth.dto';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+
+@Controller('auth')
+@ApiTags('Authentication')
+export class AuthController {
+  constructor(private authService: AuthService) {}
+
+  @Post('student/login')
+  @ApiOperation({ 
+    summary: 'Login as a student',
+    description: 'Authenticate a student and receive a JWT token. Use this token in the Authorization header for subsequent requests.'
   })
-  @ApiTags('Authentication') 
-  export class AuthController {
-    constructor(private authService: AuthService) {}
-  
-    @Public()
-    @HttpCode(HttpStatus.OK)
-    @Post('login')
-    @ApiOperation({ summary: 'Login user and get JWT token' })
-    @ApiBody({
-      schema: {
-        type: 'object',
-        properties: {
-          username: { type: 'string', example: 'testuser' },
-          password: { type: 'string', example: 'password' },
+  @ApiBody({
+    type: StudentLoginDto,
+    examples: {
+      example1: {
+        value: {
+          email: 'student1@example.com',
+          password: 'password123456'
         },
-        required: ['username', 'password'],
-      },
-    })
-    @ApiResponse({
-      status: 200,
-      description: 'Successfully logged in',
-      schema: {
-        type: 'object',
-        properties: {
-          access_token: { type: 'string', example: 'eyJhbGciOiJIUzI1Ni...' },
-        },
-      },
-    })
-    @ApiResponse({ status: 401, description: 'Invalid credentials' })
-    async signIn(@Body() signInDto: Record<string, any>) {
-      return this.authService.signIn(signInDto.username, signInDto.password);
+        description: 'Example student login credentials'
+      }
     }
-  
-    @UseGuards(AuthGuard)
-    @Get('profile')
-    @ApiOperation({ summary: 'Get user profile (requires JWT)' })
-    @ApiBearerAuth('JWT') // Indicate that this route requires JWT authentication
-    @ApiResponse({ status: 200, description: 'User profile information' })
-    @ApiResponse({ status: 401, description: 'Unauthorized' })
-    getProfile(@Request() req) {
-      return req.user;
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Returns a JWT token',
+    schema: {
+      example: {
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+      }
     }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Invalid credentials',
+    schema: {
+      example: {
+        message: 'Invalid credentials',
+        error: 'Unauthorized',
+        statusCode: 401
+      }
+    }
+  })
+  async studentLogin(@Body(new ValidationPipe()) studentLoginDto: StudentLoginDto) {
+    return this.authService.studentLogin(studentLoginDto);
   }
+
+  @Post('teacher/login')
+  @ApiOperation({ 
+    summary: 'Login as a teacher or admin',
+    description: 'Authenticate a teacher or admin and receive a JWT token. Use this token in the Authorization header for subsequent requests.'
+  })
+  @ApiBody({
+    type: TeacherLoginDto,
+    examples: {
+      example1: {
+        value: {
+          email: 'admin@example.com',
+          password: 'adminpassword123'
+        },
+        description: 'Example admin login credentials'
+      },
+      example2: {
+        value: {
+          email: 'teacher1@example.com',
+          password: 'password123456'
+        },
+        description: 'Example teacher login credentials'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Returns a JWT token',
+    schema: {
+      example: {
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Invalid credentials',
+    schema: {
+      example: {
+        message: 'Invalid credentials',
+        error: 'Unauthorized',
+        statusCode: 401
+      }
+    }
+  })
+  async teacherLogin(@Body(new ValidationPipe()) teacherLoginDto: TeacherLoginDto) {
+    return this.authService.teacherLogin(teacherLoginDto);
+  }
+}

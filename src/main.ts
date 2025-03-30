@@ -1,38 +1,22 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ValidationPipe } from '@nestjs/common';
-import { VersioningType } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+  // Enable validation globally
   app.useGlobalPipes(new ValidationPipe());
 
-  app.enableVersioning({
-    type: VersioningType.URI,
-    defaultVersion: '1',
-  });
-
   const config = new DocumentBuilder()
-    .setTitle('Compound Financial API')
-    .setDescription('The Compound Financial API description')
+    .setTitle('College Admission API')
+    .setDescription('API for managing students, teachers, and courses')
     .setVersion('1.0')
-    // Add security scheme definition
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        description: 'Enter JWT token',
-      },
-      'JWT', // This is a unique name for the security scheme
-    )
+    .addBearerAuth() // Add this line for JWT authorization
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api', app, document); //  accessible at /api
 
   await app.listen(3000);
 }

@@ -1,0 +1,15 @@
+{
+    "type": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "username": "postgres",
+    "password": "2813",
+    "database": "college_db",
+    "entities": ["dist/**/*.entity.js"],
+    "synchronize": false,
+    "migrations": ["dist/migrations/*.js"],
+    "migrationsRun": false,
+    "cli": {
+      "migrationsDir": "src/migrations"
+    }
+  }

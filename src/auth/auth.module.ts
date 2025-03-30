@@ -1,29 +1,27 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
-import { jwtConstants } from './constants';
-import { AuthGuard } from './auth.guard';
-import { APP_GUARD } from '@nestjs/core';
+import { Student } from '../entities/student.entity';
+import { Teacher } from '../entities/teacher.entity';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
-    UsersModule,
-    JwtModule.register({
-      global: true, // Makes JwtService available everywhere
-      secret: jwtConstants.secret,
-      signOptions: { expiresIn: '1h' }, // Adjust expiration time as needed
+    TypeOrmModule.forFeature([Student, Teacher]),
+    JwtModule.registerAsync({
+      imports: [ConfigModule], // Import ConfigModule
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1h' },
+      }),
+      inject: [ConfigService],
     }),
   ],
-  providers: [
-    AuthService,
-    {
-      provide: APP_GUARD,
-      useClass: AuthGuard, 
-    },
-  ],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule], // Export JwtModule
 })
 export class AuthModule {}

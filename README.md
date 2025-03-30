@@ -1,95 +1,115 @@
-# financial-app
-# Compound Financial API
+# School Registration API
 
-This is the backend service for the Compound Financial API.
+A NestJS-based API for managing school registrations, courses, and user roles.
+
+## Prerequisites
+
+- Node.js (v14 or higher)
+- PostgreSQL
+- npm or yarn
+
+## Setup
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Create database:
+```bash
+createdb school_registration
+```
+
+3. Configure environment variables (optional):
+```bash
+cp .env.example .env
+# Edit .env with your database credentials
+```
+
+4. Run database migrations and seed data:
+```bash
+npm run db:reset
+```
 
 ## Running the Application
 
-Follow these steps to get the application running locally:
-
-1.  **Prerequisites:**
-    * **Node.js** (version >= 18 is recommended)
-    * **npm** (or **yarn**)
-
-2.  **Clone the Repository:**
-    ```bash
-    git clone [https://github.com/AverageCoder2077/financial-app.git](https://github.com/AverageCoder2077/financial-app.git)
-    cd financial-app
-    ```
-
-3.  **Install Dependencies:**
-    ```bash
-    npm install
-    # or
-    yarn install
-    ```
-
-4.  **Create Data Directory and JSON Files:**
-    Ensure you have a `data` directory in the root of your project (at the same level as `src`, `package.json`, etc.). Inside this directory, create the following JSON files with your data:
-    * `data/advisors.json`
-    * `data/accounts.json`
-    * `data/securities.json`
-
-
-5.  **Build the Application:**
-    ```bash
-    npm run build
-    # or
-    yarn build
-    ```
-
-6.  **Run the Application (Development Mode):**
-    ```bash
-    npm run start:dev
-    # or
-    yarn start:dev
-    ```
-    This will start the NestJS development server, typically on `http://localhost:3000`.
-    
-## API Authentication
-
-**All API routes are now protected by JWT (JSON Web Token) authentication by default.** This means you need a valid JWT to access any route except for the login endpoint.
-
-**1. Obtain an Access Token (Login):**
-
-To get an access token, you need to send a `POST` request to the `/auth/login` endpoint with your username and password in the request body as JSON.
-
-**Example using `curl`:**
+Development mode:
 ```bash
-curl -X POST http://localhost:3000/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"username": "testuser", "password": "password"}'
+npm run start:dev
 ```
 
+Production mode:
+```bash
+npm run build
+npm run start:prod
+```
 
+## Testing
 
-## Quick API Documentation
+Run unit tests:
+```bash
+npm test
+```
 
-This API provides access to compound financial data. Here's a brief overview of the available routes:
-* **`POST /auth/login`**: (Public) Authenticates a user and returns an access_token. Requires username and password in the request body.
- 
-* **`GET /auth/profile`**: (Protected) Returns the user profile information from the JWT. Requires a valid access_token in the Authorization header.
-  
-* **`GET /`**: (Default NestJS route) Returns a simple "Hello World!" message.
+Run integration tests:
+```bash
+npm run test:e2e
+```
 
-* **`GET /advisors`**: Retrieves a list of all advisors.
+## API Documentation
 
-* **`GET /accounts`**: Retrieves a list of all accounts.
+Access Swagger documentation at `http://localhost:3000/api` when the application is running.
 
-* **`GET /securities`**: Retrieves a list of all securities.
+## Key Information
 
-* **`GET /stats/total-account-value`**: Retrieves the total value of all accounts.
+### Default Admin Credentials
+- Email: admin@example.com
+- Password: adminpassword123
 
-* **`GET /stats/top-securities`**: Retrieves a list of the top securities by total value.
+### User Roles
+1. **Admin**
+   - Full access to all endpoints
+   - Can manage teachers, students, and courses
 
-* **`GET /stats/custodian-distribution`**: Retrieves the asset distribution across different custodians, broken down by advisor.
+2. **Teacher**
+   - Can view and manage their own courses
+   - Can view students in their courses
+   - Cannot modify other teachers' data
 
-## Full API Documentation (Swagger UI)
+3. **Student**
+   - Can view and update their own profile
+   - Can enroll in courses
+   - Can view their enrolled courses
 
-For detailed information about all available API endpoints, including request and response schemas, parameters, and example usage, please refer to the interactive Swagger UI documentation available at:
+### Key Endpoints
 
-**[http://localhost:3000/api/](http://localhost:3000/api/)**
+#### Authentication
+- `POST /auth/student/login` - Student login
+- `POST /auth/teacher/login` - Teacher/Admin login
 
-You can use this interface to explore the API, try out different requests, and understand the expected responses.
+#### Students
+- `POST /students` - Register new student (public)
+- `GET /students` - Get all students (admin only)
+- `GET /students/:id` - Get student profile
+- `PUT /students/:id` - Update student profile
+- `DELETE /students/:id` - Delete student (admin only)
+- `POST /students/:id/enroll` - Enroll in course
+- `GET /students/:id/courses` - Get enrolled courses
 
----
+#### Teachers
+- `GET /teachers` - Get all teachers (admin only)
+- `GET /teachers/:id` - Get teacher profile
+- `POST /teachers` - Create teacher (admin only)
+- `GET /teachers/:id/courses` - Get teacher's courses
+- `GET /teachers/:id/students` - Get all students in teacher's courses
+
+#### Courses
+- `GET /courses` - Get all courses (public)
+- `POST /courses` - Create course (admin only)
+- `PUT /courses/:id` - Update course (admin only)
+- `DELETE /courses/:id` - Delete course (admin only)
+- `POST /courses/:id/teacher` - Assign teacher to course (admin only)
+
+## License
+
+MIT
