@@ -10,9 +10,10 @@ import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([Student, Teacher]),
     JwtModule.registerAsync({
-      imports: [ConfigModule], // Import ConfigModule
+      imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: { expiresIn: '1h' },
@@ -22,6 +23,6 @@ import { JwtStrategy } from './jwt.strategy';
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
-  exports: [AuthService, JwtModule], // Export JwtModule
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

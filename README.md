@@ -8,25 +8,50 @@ A NestJS-based API for managing school registrations, courses, and user roles.
 - PostgreSQL
 - npm or yarn
 
-## Setup
+## PostgreSQL Setup
+
+1. Install PostgreSQL:
+   - **macOS**: `brew install postgresql@14`
+   - **Windows**: Download from [PostgreSQL website](https://www.postgresql.org/download/windows/)
+   - **Linux**: `sudo apt-get install postgresql`
+
+2. Start PostgreSQL service:
+   - **macOS**: `brew services start postgresql@14`
+   - **Windows**: PostgreSQL service should start automatically
+   - **Linux**: `sudo service postgresql start`
+
+3. Create database and user:
+   ```bash
+   # Connect to PostgreSQL
+   psql postgres
+
+   # Create database
+   CREATE DATABASE college_db;
+
+   # Create user (if not exists)
+   CREATE USER postgres WITH PASSWORD '2813';
+
+   # Grant privileges
+   GRANT ALL PRIVILEGES ON DATABASE college_db TO postgres;
+
+   # Exit psql
+   \q
+   ```
+
+4. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your database credentials
+   ```
+
+## Project Setup
 
 1. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Create database:
-```bash
-createdb school_registration
-```
-
-3. Configure environment variables (optional):
-```bash
-cp .env.example .env
-# Edit .env with your database credentials
-```
-
-4. Run database migrations and seed data:
+2. Run database migrations and seed data:
 ```bash
 npm run db:reset
 ```
