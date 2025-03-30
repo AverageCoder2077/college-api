@@ -24,14 +24,34 @@ export class AuthService {
   ) {}
 
   async validateStudent(email: string, pass: string): Promise<ValidatedStudent | null> {
-    const student = await this.studentRepository.findOne({ where: { email } });
-    if (student && student.passwordHash) { // Check if student and passwordHash exist
-      const isMatch = await bcrypt.compare(pass, student.passwordHash);
-      if (isMatch) {
-        const { passwordHash, ...result } = student;
-        return result as ValidatedStudent;
-      }
+    this.logger.debug(`Attempting to validate student with email: ${email}`);
+    
+    const student = await this.studentRepository
+      .createQueryBuilder('student')
+      .addSelect('student.passwordHash')
+      .where('student.email = :email', { email })
+      .getOne();
+
+    if (!student) {
+      this.logger.debug('No student found with this email');
+      return null;
     }
+
+    if (!student.passwordHash) {
+      this.logger.debug('Student found but no password hash');
+      return null;
+    }
+
+    const isMatch = await bcrypt.compare(pass, student.passwordHash);
+    this.logger.debug(`Password match result: ${isMatch}`);
+
+    if (isMatch) {
+      const { passwordHash, ...result } = student;
+      this.logger.debug(`Student validated successfully: ${result.email}`);
+      return result as ValidatedStudent;
+    }
+
+    this.logger.debug('Password mismatch');
     return null;
   }
 

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from '../entities/student.entity';
 import { CreateStudentDto, UpdateStudentDto } from './dto/student.dto';
+import { Course } from '../entities/course.entity';
+import { Enrollment } from '../entities/enrollment.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -10,6 +12,10 @@ export class StudentsService {
   constructor(
     @InjectRepository(Student)
     private studentRepository: Repository<Student>,
+    @InjectRepository(Course)
+    private courseRepository: Repository<Course>,
+    @InjectRepository(Enrollment)
+    private enrollmentRepository: Repository<Enrollment>,
   ) {}
 
   async getStudents(): Promise<Student[]> {
@@ -25,18 +31,19 @@ export class StudentsService {
   }
 
   async registerStudent(dto: CreateStudentDto): Promise<Student> {
-    const { password, confirmPassword, email, ...studentData } = dto; // Extract email
+    const { password, confirmPassword, email, ...studentData } = dto;
     
     if (password !== confirmPassword) {
-      throw new Error('Passwords do not match'); // Consider a more specific exception
+      throw new Error('Passwords do not match');
     }
 
     const existingStudent = await this.studentRepository.findOneBy({ email });
     if (existingStudent) {
-      throw new Error('Student with this email already exists'); // Consider a more specific exception
+      throw new Error('Student with this email already exists');
     }
-    const student = this.studentRepository.create({...studentData, email}); // Include email in create
-    student.passwordHash = await bcrypt.hash(password, 10);
+    
+    const student = this.studentRepository.create({...studentData, email});
+    await student.setPassword(password);
     return this.studentRepository.save(student);
   }
 
@@ -58,18 +65,71 @@ export class StudentsService {
     await this.studentRepository.remove(student);
   }
 
-  // Implement enrollInCourse, unenrollFromCourse, getEnrolledCourses methods here
-  async enrollInCourse(studentId: number, courseId: number): Promise<any> {
-    // Implementation for enrolling a student in a course
-    return {}; // Placeholder
+  async enrollInCourse(studentId: number, courseId: number): Promise<Enrollment> {
+    const student = await this.getStudentById(studentId);
+    const course = await this.courseRepository.findOne({
+      where: { id: courseId },
+      relations: ['teacher']
+    });
+    
+    if (!course) {
+      throw new NotFoundException(`Course with ID ${courseId} not found`);
+    }
+
+    // Check if student is already enrolled
+    const existingEnrollment = await this.enrollmentRepository.findOne({
+      where: {
+        student: { id: studentId },
+        course: { id: courseId },
+      },
+    });
+
+    if (existingEnrollment) {
+      throw new Error('Student is already enrolled in this course');
+    }
+
+    const enrollment = this.enrollmentRepository.create({
+      student,
+      course,
+      enrollmentDate: new Date(),
+    });
+
+    await this.enrollmentRepository.save(enrollment);
+    
+    // Reload the enrollment with all relations
+    const savedEnrollment = await this.enrollmentRepository.findOne({
+      where: { id: enrollment.id },
+      relations: ['student', 'course']
+    });
+    
+    if (!savedEnrollment) {
+      throw new NotFoundException(`Enrollment with ID ${enrollment.id} not found`);
+    }
+    
+    return savedEnrollment;
   }
 
   async unenrollFromCourse(studentId: number, courseId: number): Promise<void> {
-    // Implementation for unenrolling a student from a course
+    const enrollment = await this.enrollmentRepository.findOne({
+      where: {
+        student: { id: studentId },
+        course: { id: courseId },
+      },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    await this.enrollmentRepository.remove(enrollment);
   }
 
-  async getEnrolledCourses(studentId: number): Promise<any[]> {
-    // Implementation for getting enrolled courses
-    return []; // Placeholder
+  async getEnrolledCourses(studentId: number): Promise<Course[]> {
+    const enrollments = await this.enrollmentRepository.find({
+      where: { student: { id: studentId } },
+      relations: ['course'],
+    });
+
+    return enrollments.map(enrollment => enrollment.course);
   }
 }

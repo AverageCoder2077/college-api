@@ -14,11 +14,10 @@ export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Admin, UserRole.Teacher)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ 
     summary: 'Get all courses',
-    description: 'Retrieve a list of all courses. Accessible by administrators and teachers.'
+    description: 'Retrieve a list of all courses. Accessible by all authenticated users.'
   })
   @ApiResponse({ 
     status: 200, 
@@ -41,7 +40,7 @@ export class CoursesController {
   })
   @ApiResponse({ 
     status: 401, 
-    description: 'Unauthorized - Requires Admin or Teacher role'
+    description: 'Unauthorized'
   })
   async getCourses() {
     return this.coursesService.getCourses();

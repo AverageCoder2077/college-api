@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Req, ParseIntPipe, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Req, ParseIntPipe, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { CreateStudentDto, UpdateStudentDto, UpdateStudentPasswordDto } from './dto/student.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -54,11 +54,10 @@ export class StudentsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.Admin, UserRole.Teacher)
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ 
     summary: 'Get student by ID',
-    description: 'Retrieve detailed information about a specific student. Only accessible by administrators and teachers.'
+    description: 'Retrieve detailed information about a specific student. Students can view their own profile, while administrators and teachers can view any student profile.'
   })
   @ApiResponse({ 
     status: 200, 
@@ -87,7 +86,11 @@ export class StudentsController {
     status: 401, 
     description: 'Unauthorized - Requires Admin or Teacher role'
   })
-  async getStudentById(@Param('id', ParseIntPipe) id: number) {
+  async getStudentById(@Param('id', ParseIntPipe) id: number, @Req() req: RequestWithUser) {
+    const user = req.user;
+    if (user?.role !== UserRole.Admin && user?.role !== UserRole.Teacher && user?.sub !== id) {
+      throw new UnauthorizedException('You can only view your own profile');
+    }
     return this.studentsService.getStudentById(id);
   }
 
@@ -232,42 +235,45 @@ export class StudentsController {
     return { message: 'Student unregistered successfully' };
   }
 
-  @Post(':studentId/enroll/:courseId')
+  @Post(':id/enroll')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ 
-    summary: 'Enroll a student in a course',
-    description: 'Enroll a student in a specific course. Only the student themselves or an administrator can enroll them.'
-  })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Student enrolled in course',
+  @ApiOperation({ summary: 'Enroll a student in a course' })
+  @ApiResponse({ status: 201, description: 'Student enrolled in course' })
+  @ApiResponse({ status: 403, description: 'Forbidden - You can only enroll yourself in courses' })
+  @ApiBody({
     schema: {
       example: {
-        message: 'Student enrolled in course',
-        enrollment: {
-          id: 1,
-          studentId: 1,
-          courseId: 1,
-          enrollmentDate: '2024-03-29T00:00:00.000Z'
-        }
+        courseId: 1
       }
     }
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Unauthorized - Only the student themselves or an administrator can enroll them'
-  })
   async enrollInCourse(
-    @Param('studentId', ParseIntPipe) studentId: number,
-    @Param('courseId', ParseIntPipe) courseId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { courseId: number },
     @Req() req: RequestWithUser,
-  ) {
-    const user = req.user;
-    if (user?.role !== UserRole.Admin && user?.sub !== studentId) {
-      throw new UnauthorizedException('Cannot enroll other students');
+  ): Promise<{ message: string; enrollment: any }> {
+    // Check if user is admin or the student themselves
+    if (req.user?.role !== UserRole.Admin && req.user?.sub !== id) {
+      throw new ForbiddenException('You can only enroll yourself in courses');
     }
-    const enrollment = await this.studentsService.enrollInCourse(studentId, courseId);
-    return { message: 'Student enrolled in course', enrollment };
+
+    const enrollment = await this.studentsService.enrollInCourse(id, body.courseId);
+    return {
+      message: 'Student enrolled in course',
+      enrollment: {
+        id: enrollment.id,
+        student: {
+          id: enrollment.student.id,
+          email: enrollment.student.email,
+        },
+        course: {
+          id: enrollment.course.id,
+          name: enrollment.course.name,
+          level: enrollment.course.level,
+        },
+        enrollmentDate: enrollment.enrollmentDate,
+      },
+    };
   }
 
   @Delete(':studentId/unenroll/:courseId')
